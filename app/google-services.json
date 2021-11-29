@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "386264219904",
+    "project_id": "firestore-compose-4ab3a",
+    "storage_bucket": "firestore-compose-4ab3a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:386264219904:android:947669a1ded87f8cdd33e5",
+        "android_client_info": {
+          "package_name": "com.wiryadev.firestore_compose"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "386264219904-4r5mb750an90cmoiihrg31323vq783hj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgUyx78XlnV1E5eQUqVNI3DYgMF8Jeu5k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "386264219904-4r5mb750an90cmoiihrg31323vq783hj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
