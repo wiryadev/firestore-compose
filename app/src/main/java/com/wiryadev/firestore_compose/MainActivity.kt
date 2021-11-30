@@ -32,6 +32,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        subscribeFirestore()
+
         setContent {
             FirestorecomposeTheme {
                 var personsState by remember { mutableStateOf("") }
@@ -46,7 +49,7 @@ class MainActivity : ComponentActivity() {
                             savePerson(it)
                         },
                         onRetrieveClicked = {
-                            retrievePersons()
+//                            retrievePersons()
                         }
                     )
                 }
@@ -80,6 +83,24 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
                 Toast.makeText(this@MainActivity, e.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun subscribeFirestore() {
+        personCollectionRef.addSnapshotListener { querySnapshot, firebaseFirestoreException ->
+            firebaseFirestoreException?.let {
+                Toast.makeText(this@MainActivity, it.message, Toast.LENGTH_LONG).show()
+                return@addSnapshotListener
+            }
+
+            querySnapshot?.let {
+                val sb = StringBuilder()
+                for (document in it) {
+                    val person = document.toObject<Person>()
+                    sb.append("$person\n")
+                }
+                persons.value = sb.toString()
             }
         }
     }
