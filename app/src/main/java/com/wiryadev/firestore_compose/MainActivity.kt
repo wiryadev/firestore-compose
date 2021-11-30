@@ -4,10 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +30,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        subscribeFirestore()
+//        subscribeFirestore()
 
         setContent {
             FirestorecomposeTheme {
@@ -48,8 +45,8 @@ class MainActivity : ComponentActivity() {
                         onSaveClicked = {
                             savePerson(it)
                         },
-                        onRetrieveClicked = {
-//                            retrievePersons()
+                        onRetrieveClicked = { minAge, maxAge ->
+                            retrievePersons(minAge, maxAge)
                         }
                     )
                 }
@@ -71,9 +68,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun retrievePersons() = lifecycleScope.launch(Dispatchers.IO) {
+    private fun retrievePersons(
+        minAge: Int,
+        maxAge: Int,
+    ) = lifecycleScope.launch(Dispatchers.IO) {
         try {
-            val querySnapshot = personCollectionRef.get().await()
+            val querySnapshot = personCollectionRef
+                .whereGreaterThan("age", minAge)
+                .whereLessThan("age", maxAge)
+                .orderBy("age")
+                .get()
+                .await()
             val sb = StringBuilder()
             for (document in querySnapshot.documents) {
                 val person = document.toObject<Person>()
@@ -110,7 +115,7 @@ class MainActivity : ComponentActivity() {
 fun Form(
     persons: String,
     onSaveClicked: (Person) -> Unit,
-    onRetrieveClicked: () -> Unit,
+    onRetrieveClicked: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -137,6 +142,14 @@ fun Form(
             mutableStateOf("")
         }
 
+        var minAge by remember {
+            mutableStateOf("")
+        }
+
+        var maxAge by remember {
+            mutableStateOf("")
+        }
+
         TextField(
             value = firstName,
             onValueChange = {
@@ -160,14 +173,11 @@ fun Form(
 
         Button(
             onClick = {
-                try {
+                age.toIntOrNull()?.let {
                     onSaveClicked(
-                        Person(firstName.trim(), lastName.trim(), age.trim().toInt())
+                        Person(firstName.trim(), lastName.trim(), it)
                     )
-                } catch (e: Exception) {
-                    Toast.makeText(context, e.toString(), Toast.LENGTH_LONG).show()
-                }
-
+                } ?: Toast.makeText(context, "Masukkan angka valid", Toast.LENGTH_LONG).show()
             }
         ) {
             Text(text = "Save Data")
@@ -176,13 +186,36 @@ fun Form(
         Button(
             onClick = {
                 try {
-                    onRetrieveClicked()
+                    onRetrieveClicked(
+                        minAge.toIntOrNull() ?: 0,
+                        maxAge.toIntOrNull() ?: 0
+                    )
                 } catch (e: Exception) {
                     Toast.makeText(context, e.toString(), Toast.LENGTH_LONG).show()
                 }
             }
         ) {
             Text(text = "Retrieve Data")
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            TextField(
+                value = minAge,
+                onValueChange = {
+                    minAge = it
+                },
+                modifier = Modifier.weight(1f)
+            )
+
+            TextField(
+                value = maxAge,
+                onValueChange = {
+                    maxAge = it
+                },
+                modifier = Modifier.weight(1f)
+            )
         }
 
         Text(text = persons)
