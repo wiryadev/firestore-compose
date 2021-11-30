@@ -1,5 +1,6 @@
 package com.wiryadev.firestore_compose
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -16,6 +17,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.ktx.Firebase
+import com.wiryadev.firestore_compose.ui.UpdatePersonActivity
 import com.wiryadev.firestore_compose.ui.theme.FirestorecomposeTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,7 +26,10 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
-    private val personCollectionRef = Firebase.firestore.collection("persons")
+    companion object {
+        val personCollectionRef = Firebase.firestore.collection("persons")
+    }
+
     private var persons = MutableLiveData("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +52,14 @@ class MainActivity : ComponentActivity() {
                         },
                         onRetrieveClicked = { minAge, maxAge ->
                             retrievePersons(minAge, maxAge)
+                        },
+                        onNavigateClick = {
+                            startActivity(
+                                Intent(
+                                    this@MainActivity,
+                                    UpdatePersonActivity::class.java
+                                ).putExtra("extra_person", it)
+                            )
                         }
                     )
                 }
@@ -116,6 +129,7 @@ fun Form(
     persons: String,
     onSaveClicked: (Person) -> Unit,
     onRetrieveClicked: (Int, Int) -> Unit,
+    onNavigateClick: (Person) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -171,31 +185,49 @@ fun Form(
             }
         )
 
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Button(
+                onClick = {
+                    age.toIntOrNull()?.let {
+                        onSaveClicked(
+                            Person(firstName.trim(), lastName.trim(), it)
+                        )
+                    } ?: Toast.makeText(context, "Masukkan angka valid", Toast.LENGTH_LONG).show()
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(text = "Save Data")
+            }
+
+            Button(
+                onClick = {
+                    try {
+                        onRetrieveClicked(
+                            minAge.toIntOrNull() ?: 0,
+                            maxAge.toIntOrNull() ?: 0
+                        )
+                    } catch (e: Exception) {
+                        Toast.makeText(context, e.toString(), Toast.LENGTH_LONG).show()
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(text = "Retrieve Data")
+            }
+        }
+
         Button(
             onClick = {
                 age.toIntOrNull()?.let {
-                    onSaveClicked(
+                    onNavigateClick(
                         Person(firstName.trim(), lastName.trim(), it)
                     )
                 } ?: Toast.makeText(context, "Masukkan angka valid", Toast.LENGTH_LONG).show()
             }
         ) {
-            Text(text = "Save Data")
-        }
-
-        Button(
-            onClick = {
-                try {
-                    onRetrieveClicked(
-                        minAge.toIntOrNull() ?: 0,
-                        maxAge.toIntOrNull() ?: 0
-                    )
-                } catch (e: Exception) {
-                    Toast.makeText(context, e.toString(), Toast.LENGTH_LONG).show()
-                }
-            }
-        ) {
-            Text(text = "Retrieve Data")
+            Text(text = "Navigate to Update Screen")
         }
 
         Row(
@@ -206,7 +238,7 @@ fun Form(
                 onValueChange = {
                     minAge = it
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
 
             TextField(
@@ -214,7 +246,7 @@ fun Form(
                 onValueChange = {
                     maxAge = it
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
         }
 
