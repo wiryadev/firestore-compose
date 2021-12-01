@@ -1,6 +1,7 @@
 package com.wiryadev.firestore_compose.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -46,6 +47,9 @@ class UpdatePersonActivity : ComponentActivity() {
                 onBatchClicked = { firstName, lastName ->
                     // personId hardcoded for now
                     changeName("x3RHL1bdVJi59iCOgk6b", firstName, lastName)
+                },
+                onTransactionClicked = {
+                    searchPerson(it)
                 }
             )
         }
@@ -67,6 +71,26 @@ class UpdatePersonActivity : ComponentActivity() {
             }
         }
         return map
+    }
+
+    private fun searchPerson(person: Person) = lifecycleScope.launch(Dispatchers.IO) {
+        try {
+            val personQuery: QuerySnapshot = MainActivity.personCollectionRef
+                .whereEqualTo("firstName", person.firstName)
+                .whereEqualTo("lastName", person.lastName)
+                .whereEqualTo("age", person.age)
+                .get()
+                .await()
+            birthday(personQuery.documents[0].id)
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@UpdatePersonActivity,
+                    e.message,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     private fun updatePerson(person: Person, newPerson: Map<String, Any>) =
@@ -159,6 +183,22 @@ class UpdatePersonActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun birthday(personId: String) = lifecycleScope.launch(Dispatchers.IO) {
+        try {
+            Firebase.firestore.runTransaction { transaction ->
+                val personRef = MainActivity.personCollectionRef.document(personId)
+                val person = transaction.get(personRef)
+                val newAge = person["age"] as Long + 1
+                transaction.update(personRef, "age", newAge)
+            }.await()
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@UpdatePersonActivity, e.message, Toast.LENGTH_LONG)
+                    .show()
+            }
+        }
+    }
 }
 
 @Composable
@@ -167,6 +207,7 @@ fun UpdateForm(
     onUpdateClicked: (String, String, String) -> Unit,
     onDeleteClicked: () -> Unit,
     onBatchClicked: (String, String) -> Unit,
+    onTransactionClicked: (Person) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -253,15 +294,27 @@ fun UpdateForm(
             }
         }
 
-        Button(
-            onClick = {
-                onBatchClicked(
-                    newFirstName, newLastName
-                )
-            },
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Batch Update")
+            Button(
+                onClick = {
+                    onBatchClicked(
+                        newFirstName, newLastName
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Batch Update")
+            }
+            Button(
+                onClick = {
+                    onTransactionClicked(person)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Do Transaction")
+            }
         }
     }
 }
