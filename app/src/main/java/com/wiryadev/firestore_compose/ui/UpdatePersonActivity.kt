@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.wiryadev.firestore_compose.MainActivity
 import com.wiryadev.firestore_compose.Person
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +42,10 @@ class UpdatePersonActivity : ComponentActivity() {
                 onDeleteClicked = {
                     deletePerson(person)
                     finish()
+                },
+                onBatchClicked = { firstName, lastName ->
+                    // personId hardcoded for now
+                    changeName("x3RHL1bdVJi59iCOgk6b", firstName, lastName)
                 }
             )
         }
@@ -97,44 +103,62 @@ class UpdatePersonActivity : ComponentActivity() {
         }
 
     private fun deletePerson(person: Person) = lifecycleScope.launch(Dispatchers.IO) {
-            val personQuery = MainActivity.personCollectionRef
-                .whereEqualTo("firstName", person.firstName)
-                .whereEqualTo("lastName", person.lastName)
-                .whereEqualTo("age", person.age)
-                .get()
-                .await()
+        val personQuery = MainActivity.personCollectionRef
+            .whereEqualTo("firstName", person.firstName)
+            .whereEqualTo("lastName", person.lastName)
+            .whereEqualTo("age", person.age)
+            .get()
+            .await()
 
-            if (personQuery.documents.isNotEmpty()) {
-                for (document in personQuery) {
-                    try {
-                        // Delete single document
-                        MainActivity.personCollectionRef.document(document.id)
-                            .delete()
-                            .await()
+        if (personQuery.documents.isNotEmpty()) {
+            for (document in personQuery) {
+                try {
+                    // Delete single document
+                    MainActivity.personCollectionRef.document(document.id)
+                        .delete()
+                        .await()
 
-                        // Delete only single field, for example delete firstName field
+                    // Delete only single field, for example delete firstName field
 //                        MainActivity.personCollectionRef.document(document.id)
 //                            .update(
 //                                mapOf("firstName" to FieldValue.delete())
 //                            )
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(this@UpdatePersonActivity, e.message, Toast.LENGTH_LONG)
-                                .show()
-                        }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@UpdatePersonActivity, e.message, Toast.LENGTH_LONG)
+                            .show()
                     }
                 }
-            } else {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        this@UpdatePersonActivity,
-                        "No person matches the query",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+            }
+        } else {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@UpdatePersonActivity,
+                    "No person matches the query",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
+    }
 
+    private fun changeName(
+        personId: String,
+        newFirstName: String,
+        newLastName: String,
+    ) = lifecycleScope.launch(Dispatchers.IO) {
+        try {
+            Firebase.firestore.runBatch { batch ->
+                val personRef = MainActivity.personCollectionRef.document(personId)
+                batch.update(personRef, "firstName", newFirstName)
+                batch.update(personRef, "lastName", newLastName)
+            }.await()
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@UpdatePersonActivity, e.message, Toast.LENGTH_LONG)
+                    .show()
+            }
+        }
+    }
 }
 
 @Composable
@@ -142,6 +166,7 @@ fun UpdateForm(
     person: Person,
     onUpdateClicked: (String, String, String) -> Unit,
     onDeleteClicked: () -> Unit,
+    onBatchClicked: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -219,12 +244,24 @@ fun UpdateForm(
             ) {
                 Text("Update Data")
             }
+
             Button(
                 onClick = onDeleteClicked,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Delete Data")
             }
+        }
+
+        Button(
+            onClick = {
+                onBatchClicked(
+                    newFirstName, newLastName
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Batch Update")
         }
     }
 }
